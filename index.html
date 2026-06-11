@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Brain Storm</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#eef2ff; --bg2:#f8fafc;
+  --accent:#0ea5ff; --accent-2:#6ee7b7;
+  --success:#22c55e; --danger:#ef4444;
+  --card:#ffffff; --muted:#6b7280;
+  --glow: 0 6px 30px rgba(14,165,255,0.12);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;font-family:'Poppins',Inter,system-ui,Arial,sans-serif;
+  background:linear-gradient(135deg,var(--bg1),var(--bg2));
+  display:flex;align-items:center;justify-content:center;color:#081124;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+.container{width:980px;max-width:96%;padding:18px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,0.95),#fff);border-radius:16px;padding:20px;box-shadow:var(--glow);position:relative;overflow:hidden}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+header h1{margin:0;font-size:20px;display:flex;gap:10px;align-items:center}
+.controls{display:flex;gap:8px;align-items:center}
+.btn{background:linear-gradient(90deg,var(--accent),#2bb7ff);color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700;transition:transform .12s}
+.btn:hover{transform:translateY(-3px)}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid rgba(14,165,255,0.3)}
+.btn.small{padding:6px 10px;font-size:13px}
+.muted{color:var(--muted)}
+.screen{padding:16px}
+.screen.hidden{display:none}
+.center{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.choices{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:12px}
+.choice{padding:12px 14px;border-radius:10px;border:1px solid rgba(2,6,23,0.04);cursor:pointer;background:#fff;font-weight:600;min-width:120px;text-align:center;transition:transform .12s}
+.choice:hover{transform:translateY(-6px);box-shadow:0 12px 30px rgba(2,6,23,0.06)}
+.grid-5{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:12px}
+.level-btn{padding:10px;border-radius:10px;background:linear-gradient(90deg,var(--accent),#60d6ff);color:#fff;border:none;cursor:pointer;font-weight:700;transition:transform .12s}
+.level-btn.locked{background:#f1f5f9;color:#a1a1a1;cursor:not-allowed}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-block;background:linear-gradient(180deg,#eefcff,#f2f9f6);padding:6px 10px;border-radius:999px;font-weight:700}
+.timebar{height:12px;background:#eef6ff;border-radius:999px;overflow:hidden;margin-top:10px}
+.timebar > i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#2b9fff,#4be1a1);transition:width .25s linear}
+#question{margin-top:18px;font-size:20px;line-height:1.3}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.option-btn{padding:14px;border-radius:12px;border:none;background:linear-gradient(180deg,#fbfdff,#f6fbff);cursor:pointer;font-weight:700;box-shadow:0 6px 18px rgba(2,6,23,0.04);transition:transform .08s}
+.option-btn.correct{outline:3px solid rgba(34,197,94,0.12)}
+.option-btn.wrong{outline:3px solid rgba(239,68,68,0.12)}
+.feedback{min-height:26px;font-weight:800;margin-top:10px;text-align:center}
+.stars{font-size:20px;color:#f6c85f;margin:6px 0;text-align:center}
+.overlay{position:absolute;left:0;top:0;right:0;bottom:0;background:rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;z-index:40}
+.loader{display:inline-grid;grid-auto-flow:column;gap:8px;align-items:center}
+.dot{width:10px;height:10px;background:var(--accent);border-radius:50%;animation:dot .9s infinite ease-in-out}
+.dot:nth-child(2){animation-delay:.15s}
+.dot:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%{transform:scale(.6);opacity:.5}50%{transform:scale(1.2);opacity:1}100%{transform:scale(.6);opacity:.5}}
+#modal.hidden{display:none!important}
+#confettiCanvas{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:9999}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:#0f172a;color:#fff;padding:10px 14px;border-radius:999px;z-index:999;opacity:0;transition:opacity .25s,transform .25s}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (max-width:880px){.grid-5{grid-template-columns:repeat(4,1fr)}.options{grid-template-columns:1fr}}
+@media (max-width:520px){.grid-5{grid-template-columns:repeat(3,1fr)}.card{padding:14px}#question{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card" id="gameCard">
+    <header>
+      <h1>Brain Storm <span class="muted" style="font-size:12px">fast trivia</span></h1>
+      <div class="controls">
+        <div class="chip muted" id="statSummary">Acc: <span id="statAcc">0%</span> • Best: <span id="statBest">0</span></div>
+        <button id="settingsBtn" class="btn small">Settings</button>
+      </div>
+    </header>
+
+    <div id="loadingOverlay" class="overlay hidden" aria-hidden="true">
+      <div class="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>
+
+    <main>
+      <!-- START -->
+      <section id="startScreen" class="screen center">
+        <h2>Ready to play?</h2>
+        <p class="start-sub muted">Test your knowledge in short, fun rounds.</p>
+        <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+          <button id="startBtn" class="btn">Start</button>
+          <button id="viewLB" class="btn ghost">Leaderboard</button>
+        </div>
+      </section>
+
+      <!-- CATEGORY -->
+      <section id="categoryScreen" class="screen hidden center">
+        <h3>Choose category</h3>
+        <div class="choices" style="margin-top:12px">
+          <div class="choice cat-btn" data-category="9">General</div>
+          <div class="choice cat-btn" data-category="17">Science</div>
+          <div class="choice cat-btn" data-category="22">Geography</div>
+          <div class="choice cat-btn" data-category="23">History</div>
+          <div class="choice cat-btn" data-category="21">Sports</div>
+        </div>
+      </section>
+
+      <!-- DIFFICULTY -->
+      <section id="difficultyScreen" class="screen hidden center">
+        <h3>Choose difficulty</h3>
+        <div class="choices" style="margin-top:12px">
+          <div class="choice diff-btn" data-difficulty="Easy">Easy</div>
+          <div class="choice diff-btn" data-difficulty="Medium">Medium</div>
+          <div class="choice diff-btn" data-difficulty="Hard">Hard</div>
+        </div>
+      </section>
+
+      <!-- LEVEL SELECTION -->
+      <section id="levelsScreen" class="screen hidden">
+        <h3>Select level</h3>
+        <div id="levelChart" class="grid-5" style="margin-top:12px"></div>
+        <div style="margin-top:12px;text-align:center"><button id="backToCat" class="btn ghost small">Back</button></div>
+      </section>
+
+      <!-- READY / COUNTDOWN -->
+      <section id="readyScreen" class="screen hidden center">
+        <h2 id="readyText">Get Ready</h2>
+        <div id="countdown" style="font-size:64px;font-weight:900;margin-top:8px">3</div>
+      </section>
+
+      <!-- LEVEL INFO -->
+      <section id="levelScreen" class="screen hidden center">
+        <h3>Level <span id="levelNum">1</span></h3>
+        <div class="stars" id="starsDisplay">☆☆☆</div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button id="startLevelBtn" class="btn">Start Level</button>
+          <button id="backToLevelsBtn" class="btn ghost">Back</button>
+        </div>
+      </section>
+
+      <!-- GAME -->
+      <section id="gameScreen" class="screen hidden">
+        <div class="topbar">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <div class="chip">Q <span id="currentQ">1</span>/<span id="totalQ">10</span></div>
+            <div class="chip">Score: <strong id="scoreDisp">0</strong></div>
+            <div class="chip">Streak: <span id="streak">0</span></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="chip small-muted">Extra: <span id="extraCount">0</span></div>
+            <div class="chip small-muted">Skip: <span id="skipCount">0</span></div>
+            <div class="chip small-muted">Hints: <span id="hintCount">0</span></div>
+          </div>
+        </div>
+
+        <h2 id="question">Question</h2>
+        <div class="timebar" aria-hidden="false" title="Time left"><i id="timeBarFill" style="width:100%"></i></div>
+        <div id="options" class="options" role="list"></div>
+
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+          <button id="extraTime" class="btn small">+5s</button>
+          <button id="skip" class="btn small">Skip</button>
+          <button id="hintBtn" class="btn small">Hint</button>
+          <button id="pauseBtn" class="btn small ghost">Pause</button>
+        </div>
+
+        <div id="feedback" class="feedback"></div>
+      </section>
+
+      <!-- END -->
+      <section id="endScreen" class="screen hidden center">
+        <div class="end-panel">
+          <div class="score-animate" id="finalScore">0</div>
+          <div class="small-muted">Your score</div>
+          <div class="stars" id="endStars">☆☆☆</div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button id="nextLevelBtn" class="btn">Next Level</button>
+            <button id="playAgain" class="btn ghost">Play Again</button>
+            <button id="endHome" class="btn ghost">Home</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Modal -->
+    <div id="modal" class="hidden" role="dialog" aria-modal="true" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--card);padding:16px;border-radius:12px;box-shadow:0 12px 40px rgba(2,6,23,0.2);z-index:200;max-width:92%;width:720px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Settings & Leaderboard</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="muteBtn" class="btn small">Mute</button>
+          <button id="closeModal" class="btn small ghost">Close</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button id="resetBtn" class="btn small">Reset Progress</button>
+        <button id="exportBtn" class="btn small ghost">Export Stats</button>
+      </div>
+      <h4 style="margin-top:12px">Leaderboard</h4>
+      <div id="leaderboard" style="max-height:200px;overflow:auto;padding-top:6px">No scores yet</div>
+      <h4 style="margin-top:12px">Statistics</h4>
+      <div id="statsPanel" style="font-size:13px;color:var(--muted);max-height:200px;overflow:auto;padding-top:6px"></div>
+    </div>
+
+    <canvas id="confettiCanvas"></canvas>
+    <div id="toast" class="toast">Saved</div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', ()=> {
+  // Helpers
+  const qs = s => document.querySelector(s);
+  const qsa = s => Array.from(document.querySelectorAll(s));
+  const LS = 'brainstorm_prod_v1_';
+  const read = (k,v)=>{ try { return JSON.parse(localStorage.getItem(LS+k)) ?? v; } catch { return v; } };
+  const write = (k,v)=> localStorage.setItem(LS+k, JSON.stringify(v));
+  const escapeHTML = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  // Persistent data
+  let progress = read('progress', {});
+  let leaderboard = read('leaderboard', []);
+  let powerups = read('powerups', {extra:2, skip:1, hint:2});
+  let stats = read('stats', {totalQ:0, correct:0, bestStreak:0, byCategory:{}});
+  let muted = false; // user requested music ON
+
+  // DOM refs
+  const startBtn = qs('#startBtn'), viewLB = qs('#viewLB'), settingsBtn = qs('#settingsBtn');
+  const catBtns = qsa('.cat-btn'), diffBtns = qsa('.diff-btn');
+  const startScreen = qs('#startScreen'), categoryScreen = qs('#categoryScreen'), difficultyScreen = qs('#difficultyScreen');
+  const levelsScreen = qs('#levelsScreen'), levelChart = qs('#levelChart'), backToCat = qs('#backToCat');
+  const readyScreen = qs('#readyScreen'), countdownEl = qs('#countdown'), readyText = qs('#readyText');
+  const levelScreen = qs('#levelScreen'), levelNumEl = qs('#levelNum'), starsDisplay = qs('#starsDisplay');
+  const startLevelBtn = qs('#startLevelBtn'), backToLevelsBtn = qs('#backToLevelsBtn');
+  const gameScreen = qs('#gameScreen'), questionEl = qs('#question'), optionsEl = qs('#options');
+  const timeBarFill = qs('#timeBarFill'), currentQ = qs('#currentQ'), totalQ = qs('#totalQ');
+  const scoreDisp = qs('#scoreDisp'), streakDisp = qs('#streak'), feedback = qs('#feedback');
+  const extraBtn = qs('#extraTime'), skipBtn = qs('#skip'), hintBtn = qs('#hintBtn'), pauseBtn = qs('#pauseBtn');
+  const extraCountEl = qs('#extraCount'), skipCountEl = qs('#skipCount'), hintCountEl = qs('#hintCount');
+  const endScreen = qs('#endScreen'), finalScoreEl = qs('#finalScore'), endStarsEl = qs('#endStars');
+  const nextLevelBtn = qs('#nextLevelBtn'), playAgain = qs('#playAgain'), endHome = qs('#endHome');
+  const modal = qs('#modal'), closeModal = qs('#closeModal'), muteBtn = qs('#muteBtn');
+  const resetBtn = qs('#resetBtn'), exportBtn = qs('#exportBtn'), leaderboardEl = qs('#leaderboard'), statsPanel = qs('#statsPanel');
+  const loadingOverlay = qs('#loadingOverlay'), toastEl = qs('#toast');
+  const confettiCanvas = qs('#confettiCanvas');
+
+  // Game vars
+  const TOTAL_LEVELS = 30;
+  const QUESTIONS_PER_LEVEL = 10;
+  let category = '9', difficulty = 'Easy', level = 1;
+  let questions = [], qi = 0, score = 0, streak = 0, bestStreak = 0;
+  let timerId = null, timeLeft = 0, timeLimit = 10;
+  let audioCtx = null, bgOsc = null, bgGain = null;
+
+  // Utilities
+  function showToast(msg='Saved', t=1600){
+    if(!toastEl) return;
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    setTimeout(()=> toastEl.classList.remove('show'), t);
+  }
+  function showLoading(on=true){ if(!loadingOverlay) return; loadingOverlay.classList.toggle('hidden',!on); }
+  function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]] } return arr; }
+  function decodeHTML(html){ const t=document.createElement('textarea'); t.innerHTML=html; return t.value; }
+
+  // Audio — user wanted music ON. Start on first interaction to avoid autoplay block.
+  const AudioClass = window.AudioContext || window.webkitAudioContext;
+  function ensureAudio(){ if(!AudioClass) return; try { if(!audioCtx) audioCtx = new AudioClass(); } catch(e){ console.warn('audio init failed',e); } }
+  function startBackground(){
+    if(!audioCtx) ensureAudio();
+    if(!audioCtx) return;
+    if(bgOsc) return;
+    try{
+      bgOsc = audioCtx.createOscillator();
+      bgGain = audioCtx.createGain();
+      bgOsc.type='sine'; bgOsc.frequency.value = 220;
+      bgGain.gain.value = 0.0001;
+      bgOsc.connect(bgGain); bgGain.connect(audioCtx.destination);
+      bgOsc.start();
+      bgGain.gain.linearRampToValueAtTime(0.02,audioCtx.currentTime+0.6);
+    }catch(e){ console.warn('bg start',e); bgOsc=null; bgGain=null; }
+  }
+  function stopBackground(){ try{ if(bgGain) bgGain.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.3); setTimeout(()=>{ try{ bgOsc.stop(); } catch{} bgOsc=null; bgGain=null; },450);}catch(e){ } }
+  function playTone(freq=440,type='sine',dur=0.12,vol=0.12){ if(!audioCtx) ensureAudio(); if(!audioCtx) return; try{ const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.type=type; o.frequency.value=freq; g.gain.value=vol; o.connect(g); g.connect(audioCtx.destination); o.start(); g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+dur); setTimeout(()=>{ try{o.stop()}catch{} },dur*1000+50);}catch(e){ } }
+  function sfxCorrect(){ playTone(880,'sawtooth',0.06,0.12); setTimeout(()=>playTone(1100,'sine',0.08,0.08),60); }
+  function sfxWrong(){ playTone(200,'square',0.18,0.14); }
+  function sfxClick(){ playTone(1200,'sine',0.03,0.06); }
+
+  // Confetti (single robust implementation)
+  let confettiCtx=null, confettiPieces=[];
+  function confettiSetup(){
+    if(!confettiCanvas) return;
+    confettiCtx = confettiCanvas.getContext('2d');
+    const resize = ()=>{ confettiCanvas.width = innerWidth * devicePixelRatio; confettiCanvas.height = innerHeight * devicePixelRatio; confettiCanvas.style.width = innerWidth +'px'; confettiCanvas.style.height = innerHeight +'px'; confettiCtx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); };
+    resize(); window.addEventListener('resize', resize);
+  }
+  function confettiSpawn(n=60){
+    if(!confettiCtx) return;
+    confettiPieces = [];
+    for(let i=0;i<n;i++) confettiPieces.push({ x:Math.random()*innerWidth, y:Math.random()*-innerHeight*0.2, vx:(Math.random()-0.5)*4, vy:1+Math.random()*3, r:6+Math.random()*8, color:['#ffcd3c','#ff6b6b','#6be5b6','#5b9dff','#b98cff'][Math.floor(Math.random()*5)], rot:Math.random()*360, rotSpeed:(Math.random()-0.5)*10 });
+    requestAnimationFrame(confettiFrame); setTimeout(()=>{ confettiPieces=[]; confettiCtx.clearRect(0,0,innerWidth,innerHeight); },5200);
+  }
+  function confettiFrame(){
+    if(!confettiPieces.length || !confettiCtx) return;
+    confettiCtx.clearRect(0,0,innerWidth,innerHeight);
+    confettiPieces.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.vy+=0.04; p.rot+=p.rotSpeed; confettiCtx.save(); confettiCtx.translate(p.x,p.y); confettiCtx.rotate(p.rot*Math.PI/180); confettiCtx.fillStyle=p.color; confettiCtx.fillRect(-p.r/2,-p.r/2,p.r,p.r*0.6); confettiCtx.restore(); });
+    if(confettiPieces.length) requestAnimationFrame(confettiFrame);
+  }
+
+  // Loading / fallback questions (15 sample mixed)
+  const FALLBACK_QUESTIONS = [
+    {q:'What is 2 + 2?', a:'4', opts:['3','4','5','6']},
+    {q:'Capital of France?', a:'Paris', opts:['Paris','Rome','Berlin','Madrid']},
+    {q:'Which planet is known as the Red Planet?', a:'Mars', opts:['Venus','Mars','Jupiter','Saturn']},
+    {q:'H2O is the chemical formula for what?', a:'Water', opts:['Oxygen','Hydrogen','Water','Helium']},
+    {q:'Who wrote "Romeo and Juliet"?', a:'William Shakespeare', opts:['Shakespeare','Hemingway','Tolkien','Orwell']},
+    {q:'What organ pumps blood through the body?', a:'Heart', opts:['Lungs','Liver','Heart','Kidney']},
+    {q:'Which gas do plants use for photosynthesis?', a:'Carbon dioxide', opts:['Oxygen','Nitrogen','Carbon dioxide','Hydrogen']},
+    {q:'How many continents are there?', a:'7', opts:['5','6','7','8']},
+    {q:'What is the boiling point of water at sea level (°C)?', a:'100', opts:['90','95','100','105']},
+    {q:'What is the largest ocean on Earth?', a:'Pacific', opts:['Atlantic','Pacific','Indian','Arctic']},
+    {q:'Who painted the Mona Lisa?', a:'Leonardo da Vinci', opts:['Michelangelo','Van Gogh','Da Vinci','Rembrandt']},
+    {q:'The Great Wall is located in which country?', a:'China', opts:['India','China','Japan','Korea']},
+    {q:'Which is a mammal?', a:'Dolphin', opts:['Shark','Tuna','Dolphin','Octopus']},
+    {q:'Which language is primarily spoken in Brazil?', a:'Portuguese', opts:['Spanish','Portuguese','French','English']},
+    {q:'Light travels fastest in?', a:'Vacuum', opts:['Air','Water','Glass','Vacuum']}
+  ];
+
+  // Fetch from OpenTDB (only when needed), otherwise use fallback
+  async function fetchQuestions(cat, diff){
+    const url = `https://opentdb.com/api.php?amount=${QUESTIONS_PER_LEVEL}&type=multiple&category=${encodeURIComponent(cat)}&difficulty=${encodeURIComponent(diff.toLowerCase())}`;
+    try{
+      showLoading(true);
+      const res = await fetch(url, {cache:'no-store'});
+      showLoading(false);
+      const data = await res.json();
+      if(data && data.results && data.results.length){
+        return data.results.map(it => ({ q: decodeHTML(it.question), a: decodeHTML(it.correct_answer), opts: shuffle([...it.incorrect_answers.map(decodeHTML), decodeHTML(it.correct_answer)]) }));
+      }
+    }catch(e){
+      console.warn('fetch error, using fallback', e);
+      showLoading(false);
+    }
+    // fallback slice of 10 shuffled
+    return shuffle(FALLBACK_QUESTIONS).slice(0, QUESTIONS_PER_LEVEL);
+  }
+
+  // Render levels
+  function renderLevels(){
+    if(!levelChart) return;
+    levelChart.innerHTML = '';
+    for(let i=1;i<=TOTAL_LEVELS;i++){
+      const key = `${category}-${difficulty}-${i}`;
+      const btn = document.createElement('button');
+      btn.className = 'level-btn';
+      btn.textContent = i;
+      const s = progress[key] || 0;
+      if(s>0) btn.classList.add('shiny');
+      if(i===1 || progress[`${category}-${difficulty}-${i-1}`] > 0){
+        btn.addEventListener('click', ()=>{ level = i; levelNumEl.textContent = i; updateStarsUI(); btn.classList.add('shiny'); setTimeout(()=>btn.classList.remove('shiny'),900); showScreen('#levelScreen'); });
+      } else { btn.classList.add('locked'); btn.disabled = true; }
+      levelChart.appendChild(btn);
+    }
+  }
+
+  function updateStarsUI(){ const key = `${category}-${difficulty}-${level}`; const s = progress[key] || 0; starsDisplay.textContent = '★'.repeat(s) + '☆'.repeat(3-s); }
+
+  function updatePowerupUI(){ if(extraCountEl) extraCountEl.textContent = powerups.extra; if(skipCountEl) skipCountEl.textContent = powerups.skip; if(hintCountEl) hintCountEl.textContent = powerups.hint; }
+
+  function updateTopStatsUI(){ const acc = stats.totalQ ? Math.round((stats.correct/stats.totalQ)*100) : 0; qs('#statAcc').textContent = acc + '%'; qs('#statBest').textContent = stats.bestStreak || 0; }
+
+  // Screen helper
+ function showScreen(sel){
+  // Hide all screens completely
+  qsa('.screen').forEach(s => { 
+    s.classList.add('hidden'); 
+    s.style.display = 'none';
+  });
+
+  // Show only the target screen
+  const el = document.querySelector(sel);
+  if (el) {
+    el.classList.remove('hidden');
+    el.style.display = 'block';
+  }
+
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+
+  // Game flow
+  async function startLevel(){
+    sfxClick(); qi = 0; score = 0; streak = 0; bestStreak = stats.bestStreak || 0;
+    scoreDisp.textContent = score; streakDisp.textContent = streak;
+    showScreen('#readyScreen');
+    let count = 3; if(countdownEl) countdownEl.textContent = count; if(readyText) readyText.textContent = 'Get Ready';
+    const timer = setInterval(()=>{ count--; if(count>0){ if(countdownEl) countdownEl.textContent = count; } else { clearInterval(timer); if(countdownEl) countdownEl.textContent='Go!'; setTimeout(async ()=>{ questions = await fetchQuestions(category,difficulty); totalQ.textContent = questions.length; timeLimit = difficulty==='Easy'?15: difficulty==='Medium'?10:7; if(!audioCtx) ensureAudio(); startBackground(); showScreen('#gameScreen'); loadQuestion(); },300); } },650);
+  }
+
+  function loadQuestion(){
+    clearInterval(timerId); timerId = null;
+    if(!questions) questions = [];
+    if(qi >= questions.length){ endLevel(); return; }
+    const q = questions[qi];
+    questionEl.textContent = q.q;
+    optionsEl.innerHTML = '';
+    q.opts.forEach(o => {
+      const btn = document.createElement('button'); btn.className='option-btn'; btn.type='button'; btn.textContent=o;
+      btn.addEventListener('click', ()=> selectAnswer(btn, o === q.a));
+      btn.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); btn.click(); }});
+      optionsEl.appendChild(btn);
+    });
+    if(currentQ) currentQ.textContent = qi+1;
+    if(totalQ) totalQ.textContent = questions.length;
+    const adaptBonus = Math.min(Math.floor(streak/3),3);
+    const adaptPenalty = Math.max(0, Math.floor((qi-streak)/8));
+    const finalLimit = Math.max(4, timeLimit + adaptBonus - adaptPenalty);
+    timeLeft = finalLimit; updateTimeBar(); startTimer();
+    if(feedback) { feedback.textContent=''; feedback.style.color=''; } enableAllOptions();
+  }
+
+  function selectAnswer(btn, correct){
+    disableOptions(); clearInterval(timerId); timerId = null;
+    if(correct){ score++; streak++; bestStreak = Math.max(bestStreak, streak); sfxCorrect(); if(btn) btn.classList.add('correct'); if(feedback){ feedback.textContent='Correct!'; feedback.style.color='var(--success)'; } }
+    else { streak=0; sfxWrong(); if(btn) btn.classList.add('wrong'); if(feedback){ feedback.textContent='Wrong'; feedback.style.color='var(--danger)'; } }
+    stats.totalQ = (stats.totalQ||0)+1; if(correct) stats.correct=(stats.correct||0)+1; stats.bestStreak = Math.max(stats.bestStreak||0,bestStreak); stats.byCategory = stats.byCategory||{}; stats.byCategory[category]=stats.byCategory[category]||{q:0,c:0}; stats.byCategory[category].q+=1; if(correct) stats.byCategory[category].c+=1; write('stats',stats);
+    if(scoreDisp) scoreDisp.textContent = score; if(streakDisp) streakDisp.textContent = streak; updateTopStatsUI();
+    qi++; setTimeout(()=>{ qsa('.option-btn').forEach(b=>b.classList.remove('correct','wrong')); loadQuestion(); },600);
+  }
+
+  function disableOptions(){ qsa('.option-btn').forEach(b=>{ b.disabled=true; b.style.opacity=0.75; }); }
+  function enableAllOptions(){ qsa('.option-btn').forEach(b=>{ b.disabled=false; b.style.opacity=1; b.style.visibility='visible'; }); }
+
+  // Timer
+  function startTimer(){ clearInterval(timerId); timerId = setInterval(()=>{ timeLeft--; if(timeLeft<0) timeLeft=0; updateTimeBar(); if(timeLeft<=0){ clearInterval(timerId); timerId=null; selectAnswer(null,false); } },1000); }
+  function updateTimeBar(){ const base = difficulty==='Easy'?15: difficulty==='Medium'?10:7; const pct = Math.max(0, Math.min(100, (timeLeft/base)*100)); if(timeBarFill) timeBarFill.style.width = pct + '%'; }
+
+  // Powerups
+  function useExtra(){ if(powerups.extra<=0){ alert('No extra-time tokens'); return; } powerups.extra--; write('powerups',powerups); updatePowerupUI(); timeLeft += 5; updateTimeBar(); sfxClick(); }
+  function useSkip(){ if(powerups.skip<=0){ alert('No skip tokens'); return; } powerups.skip--; write('powerups',powerups); updatePowerupUI(); clearInterval(timerId); timerId=null; qi++; setTimeout(()=>loadQuestion(),200); sfxClick(); }
+  function useHint(){ if(powerups.hint<=0){ alert('No hint tokens'); return; } const q = questions[qi]; if(!q) return; const wrongs = q.opts.filter(o=>o!==q.a); if(!wrongs.length) return; const pick = wrongs[Math.floor(Math.random()*wrongs.length)]; qsa('.option-btn').forEach(b=>{ if(b.textContent===pick) b.style.visibility='hidden'; }); powerups.hint--; write('powerups',powerups); updatePowerupUI(); sfxClick(); }
+
+  // End level
+  function endLevel(){
+    clearInterval(timerId); timerId=null; stopBackground();
+    let stars = 0;
+    if (difficulty === 'Easy'){ if(score>=5) stars=1; if(score>=7) stars=2; if(score===questions.length) stars=3; }
+    else if (difficulty === 'Medium'){ if(score>=6) stars=1; if(score>=8) stars=2; if(score===questions.length) stars=3; }
+    else { if(score>=7) stars=1; if(score>=9) stars=2; if(score===questions.length) stars=3; }
+    const key = `${category}-${difficulty}-${level}`; progress[key] = Math.max(progress[key]||0,stars); write('progress',progress);
+    const topScore = leaderboard[0]?.s || 0;
+    if(score > topScore){ const name = prompt('New high score! Enter name:', 'Player') || 'Player'; leaderboard.unshift({n:name.slice(0,20), s:score, d:new Date().toLocaleString()}); leaderboard = leaderboard.slice(0,50); write('leaderboard',leaderboard); showToast('New high score!'); } else showToast('Progress saved');
+    finalScoreEl.textContent = score; endStarsEl.textContent = '★'.repeat(stars) + '☆'.repeat(3-stars);
+    if(stars===3){ confettiSpawn(90); sfxCorrect(); }
+    animateCountUp(0,score,finalScoreEl,700);
+    showScreen('#endScreen'); updatePowerupUI(); updateStarsUI();
+  }
+
+  function animateCountUp(from,to,el,dur=600){ const start = performance.now(); function frame(now){ const t=Math.min(1,(now-start)/dur); const v=Math.floor(from + (to-from)*(1 - Math.pow(1-t,3))); if(el) el.textContent=v; if(t<1) requestAnimationFrame(frame); } requestAnimationFrame(frame); }
+
+  // Leaderboard & stats rendering
+  function renderLeaderboard(){ if(!leaderboardEl) return; if(!leaderboard.length){ leaderboardEl.textContent = 'No scores yet'; return; } leaderboardEl.innerHTML = leaderboard.map((r,i)=>`<div style="padding:8px;border-bottom:1px solid #f1f5f9">${i+1}. ${escapeHTML(r.n)} — ${r.s} pts <div style="font-size:12px;color:#999">${escapeHTML(r.d)}</div></div>`).join(''); }
+  function renderStatsPanel(){ if(!statsPanel) return; const s = stats || {}; statsPanel.innerHTML = `<div>Total Questions: ${s.totalQ||0}</div><div>Correct: ${s.correct||0}</div><div>Accuracy: ${s.totalQ?Math.round((s.correct/s.totalQ)*100):0}%</div><div>Best Streak: ${s.bestStreak||0}</div><h5 style="margin-top:8px">By Category</h5>` + (Object.keys(s.byCategory||{}).length ? Object.entries(s.byCategory).map(([cat,o])=>`<div>${cat}: ${o.c}/${o.q} (${Math.round((o.c/o.q)*100||0)}%)</div>`).join('') : '<div>No data</div>'); }
+
+  // UI wiring
+  startBtn && startBtn.addEventListener('click', ()=>{ sfxClick(); showScreen('#categoryScreen'); });
+  viewLB && viewLB.addEventListener('click', ()=>{ openModal(); renderLeaderboard(); renderStatsPanel(); });
+  catBtns.forEach(b=> b.addEventListener('click', ()=>{ category = b.dataset.category; sfxClick(); showScreen('#difficultyScreen'); }));
+  diffBtns.forEach(b=> b.addEventListener('click', ()=>{ difficulty=b.dataset.difficulty; sfxClick(); renderLevels(); showScreen('#levelsScreen'); }));
+  backToCat && backToCat.addEventListener('click', ()=> showScreen('#categoryScreen'));
+  startLevelBtn && startLevelBtn.addEventListener('click', ()=> startLevel());
+  backToLevelsBtn && backToLevelsBtn.addEventListener('click', ()=> showScreen('#levelsScreen'));
+  extraBtn && extraBtn.addEventListener('click', useExtra);
+  skipBtn && skipBtn.addEventListener('click', useSkip);
+  hintBtn && hintBtn.addEventListener('click', useHint);
+  pauseBtn && pauseBtn.addEventListener('click', ()=>{ if(pauseBtn.textContent.trim()==='Pause'){ clearInterval(timerId); timerId=null; pauseBtn.textContent='Resume'; } else { startTimer(); pauseBtn.textContent='Pause'; }});
+  nextLevelBtn && nextLevelBtn.addEventListener('click', ()=>{ if(level < TOTAL_LEVELS){ level++; levelNumEl.textContent=level; updateStarsUI(); showScreen('#levelScreen'); } else alert('No more levels'); });
+  playAgain && playAgain.addEventListener('click', ()=> showScreen('#categoryScreen'));
+  endHome && endHome.addEventListener('click', ()=> showScreen('#startScreen'));
+  settingsBtn && settingsBtn.addEventListener('click', ()=>{ openModal(); renderLeaderboard(); renderStatsPanel(); });
+  closeModal && closeModal.addEventListener('click', ()=> closeModalFn());
+  muteBtn && muteBtn.addEventListener('click', ()=>{ muted = !muted; write('muted', muted); muteBtn.textContent = muted ? 'Unmute' : 'Mute'; if(muted) stopBackground(); else { ensureAudio(); startBackground(); } sfxClick(); });
+  resetBtn && resetBtn.addEventListener('click', ()=>{ if(!confirm('Reset progress, leaderboard, stats and powerups?')) return; progress={}; leaderboard=[]; stats={totalQ:0,correct:0,bestStreak:0,byCategory:{}}; powerups={extra:2,skip:1,hint:2}; write('progress',progress); write('leaderboard',leaderboard); write('stats',stats); write('powerups',powerups); renderLeaderboard(); renderStatsPanel(); updatePowerupUI(); updateTopStatsUI(); showToast('Reset complete'); sfxClick(); });
+  exportBtn && exportBtn.addEventListener('click', ()=>{ const data={progress,leaderboard,stats,powerups}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='brainstorm_export.json'; a.click(); URL.revokeObjectURL(url); sfxClick(); });
+
+  function openModal(){ if(!modal) return; modal.classList.remove('hidden'); modal.style.display='block'; muteBtn && (muteBtn.textContent = muted ? 'Unmute' : 'Mute'); }
+  function closeModalFn(){ if(!modal) return; modal.classList.add('hidden'); modal.style.display='none'; }
+
+  // close modal on outside click
+  window.addEventListener('click', e => { if(!modal || modal.classList.contains('hidden')) return; if(!modal.contains(e.target) && !e.target.matches('#settingsBtn')) closeModalFn(); });
+
+  // keyboard accessibility
+  window.addEventListener('keydown', e => { if((e.key==='Enter' || e.key===' ') && document.activeElement && document.activeElement.classList.contains('option-btn')) document.activeElement.click(); if(e.key==='Escape') closeModalFn(); });
+
+  // confetti setup
+  confettiSetup();
+
+  // initial UI population
+  updatePowerupUI(); updateTopStatsUI(); renderLevels(); updateStarsUI();
+
+  // ensure modal hidden on load (defensive)
+  if(modal){ modal.classList.add('hidden'); modal.style.display='none'; }
+
+  // ensure audio on first user gesture: user asked music ON, so start on first click
+  function startAudioOnFirstGesture(){
+    ensureAudio();
+    if(!audioCtx) return;
+    startBackground();
+    document.removeEventListener('click', startAudioOnFirstGesture);
+  }
+  document.addEventListener('click', startAudioOnFirstGesture, { once:true });
+
+   // --- 🧠 Final Boot Sequence ---
+  window.brainstorm = { read, write, progress, leaderboard, powerups, stats };
+
+  // Force everything to initialize cleanly once window finishes rendering
+  window.addEventListener("load", () => {
+    // Hide all screens
+    document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
+
+    // Hide modal and loading overlay
+    const modal = document.getElementById("modal");
+    const loader = document.getElementById("loadingOverlay");
+    if (modal) { modal.classList.add("hidden"); modal.style.display = "none"; }
+    if (loader) { loader.classList.add("hidden"); loader.style.display = "none"; }
+
+    // Force show the start screen
+    const startScreen = document.getElementById("startScreen");
+    if (startScreen) {
+      startScreen.classList.remove("hidden");
+      startScreen.style.display = "block";
+    }
+
+    // For safety, remove any accidental blur or opacity
+    const card = document.getElementById("gameCard");
+    if (card) {
+      card.style.filter = "none";
+      card.style.opacity = "1";
+    }
+
+    console.log("✅ Brain Storm initialized cleanly");
+  });
+});
+</script>
+
+</body>
+</html>
